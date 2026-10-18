@@ -1,0 +1,447 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digit Pulse AI | Deriv Scanner</title>
+<style>
+:root {
+  --bg:#07111f; --panel:#101e31; --line:#263b56;
+  --text:#eff6ff; --muted:#9db0c8; --cyan:#42e8ff;
+  --green:#36e6a1; --red:#ff6685; --gold:#ffd166;
+}
+*{box-sizing:border-box}
+body{
+  margin:0;background:radial-gradient(circle at top,#152c48,#07111f 60%);
+  color:var(--text);font-family:Arial,sans-serif;padding:16px;
+}
+main{max-width:850px;margin:auto}
+header{text-align:center;padding:18px 4px}
+h1{margin:0;font-size:29px;letter-spacing:1px}
+h1 span{color:var(--cyan)}
+.subtitle{color:var(--muted);font-size:13px;margin-top:9px}
+.panel{
+  background:rgba(16,30,49,.96);border:1px solid var(--line);
+  border-radius:17px;padding:16px;margin-bottom:14px;
+  box-shadow:0 10px 35px #0003;
+}
+.panel h2{font-size:16px;margin:0 0 13px}
+label{display:block;color:var(--muted);font-size:12px;margin-bottom:7px}
+select,button{
+  width:100%;padding:13px;border-radius:10px;
+  font-size:14px;border:1px solid var(--line);
+}
+select{background:#091626;color:var(--text)}
+button{cursor:pointer;font-weight:bold}
+.buttons{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:13px}
+.start{background:var(--green);color:#041b14;border:0}
+.stop{background:#351a2a;color:#ffdce5;border-color:#74334a}
+.status{display:flex;align-items:center;gap:9px;font-size:13px}
+.dot{width:10px;height:10px;border-radius:50%;background:var(--gold)}
+.dot.live{background:var(--green);box-shadow:0 0 12px var(--green)}
+.small{color:var(--muted);font-size:12px;line-height:1.6}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:9px}
+.stat{background:#091626;border:1px solid var(--line);border-radius:12px;padding:13px}
+.stat small{color:var(--muted);display:block;font-size:11px}
+.stat strong{display:block;font-size:22px;margin-top:8px;overflow-wrap:anywhere}
+.signal{text-align:center;padding:20px 8px}
+.signal strong{display:block;font-size:32px;color:var(--gold);margin:12px 0}
+.signal p{color:var(--muted);font-size:13px;line-height:1.5}
+.badge{display:inline-block;padding:6px 10px;border-radius:20px;background:#24344b;color:var(--cyan);font-size:11px}
+.history{max-height:260px;overflow:auto}
+.tick{display:flex;justify-content:space-between;gap:12px;padding:9px 2px;border-bottom:1px solid #263b563f;font-size:13px}
+.tick span:last-child{color:var(--cyan);font-weight:bold}
+.market-name{font-size:13px}
+.footer{text-align:center;color:var(--muted);font-size:11px;padding:10px}
+@media(max-width:480px){
+ body{padding:10px}h1{font-size:24px}
+ .stats{grid-template-columns:1fr 1fr}
+ .stat:last-child{grid-column:1/-1}
+}
+</style>
+</head>
+<body>
+<main>
+<header>
+  <h1>DIGIT <span>PULSE AI</span></h1>
+  <div class="subtitle">DERIV LIVE TICK SCANNER · OVER / UNDER</div>
+</header>
+
+<section class="panel">
+  <h2>01 / Connection</h2>
+  <div class="status"><span id="dot" class="dot"></span><span id="status">Disconnected</span></div>
+  <p class="small" id="connectionNote">Start the scanner to connect to Deriv public market data.</p>
+</section>
+
+<section class="panel">
+  <h2>02 / Choose Market</h2>
+  <label for="market">Volatility Index</label>
+  <select id="market">
+    <option value="R_10">Volatility 10 Index</option>
+    <option value="R_25">Volatility 25 Index</option>
+    <option value="R_50">Volatility 50 Index</option>
+    <option value="R_75">Volatility 75 Index</option>
+    <option value="R_100">Volatility 100 Index</option>
+    <option value="1HZ10V">Volatility 10 (1s) Index</option>
+    <option value="1HZ15V">Volatility 15 (1s) Index</option>
+    <option value="1HZ25V">Volatility 25 (1s) Index</option>
+    <option value="1HZ30V">Volatility 30 (1s) Index</option>
+    <option value="1HZ50V">Volatility 50 (1s) Index</option>
+    <option value="1HZ75V">Volatility 75 (1s) Index</option>
+    <option value="1HZ90V">Volatility 90 (1s) Index</option>
+    <option value="1HZ100V">Volatility 100 (1s) Index</option>
+    <option value="R_250">Volatility 250 Index</option>
+  </select>
+
+  <div style="height:14px"></div>
+  <label for="mode">Scanning Mode — choose one</label>
+  <select id="mode">
+    <option value="100">Mode A — Recent 100 ticks</option>
+    <option value="500">Mode B — Recent 500 ticks</option>
+  </select>
+
+  <div class="buttons">
+    <button class="start" id="start">▶ START SCANNER</button>
+    <button class="stop" id="stop">■ STOP SCANNER</button>
+  </div>
+  <p class="small">Only the selected market and scanning mode run at a time. This scanner does not execute trades.</p>
+</section>
+
+<section class="panel">
+  <h2>03 / Live Market</h2>
+  <div class="stats">
+    <div class="stat"><small>Latest Quote</small><strong id="quote">—</strong></div>
+    <div class="stat"><small>Last Digit</small><strong id="digit">—</strong></div>
+    <div class="stat"><small>Ticks Received</small><strong id="received">0</strong></div>
+  </div>
+</section>
+
+<section class="panel signal">
+  <span class="badge">OVER / UNDER ANALYSIS</span>
+  <strong id="signal">WAITING</strong>
+  <p id="signalInfo">Start the scanner to collect market ticks.</p>
+  <div class="small" id="barrierInfo">No barrier selected</div>
+</section>
+
+<section class="panel">
+  <h2>04 / Last-Digit Frequency</h2>
+  <div class="stats" id="frequencies"></div>
+  <p class="small" id="frequencyNote">Frequency is descriptive history, not a guarantee of the next digit.</p>
+</section>
+
+<section class="panel">
+  <h2>05 / Live Tick History</h2>
+  <div class="history" id="history"><div class="small">No ticks loaded yet.</div></div>
+</section>
+
+<div class="footer">
+  Public market data only · Signals are statistical observations, not guaranteed predictions.
+</div>
+</main>
+
+<script>
+"use strict";
+
+/* Your supplied Deriv App ID is inserted here. */
+const APP_ID = "34I7hjqMj1tMQwZIak0oR";
+const WS_URL = "wss://ws.derivws.com/websockets/v3?app_id=" + encodeURIComponent(APP_ID);
+
+const $ = id => document.getElementById(id);
+
+let socket = null;
+let running = false;
+let activeSymbol = "";
+let tickDigits = [];
+let tickRows = [];
+let received = 0;
+let lastQuote = null;
+let requestId = 1;
+let historyRequestId = null;
+let tickSubscriptionId = null;
+let reconnectTimer = null;
+let reconnectAttempts = 0;
+let generation = 0;
+
+function setStatus(message, live=false) {
+  $("status").textContent = message;
+  $("dot").classList.toggle("live", live);
+}
+
+function getLastDigit(quote) {
+  const text = String(quote);
+  const decimal = text.indexOf(".");
+  if (decimal >= 0) {
+    const digits = text.slice(decimal + 1).replace(/\D/g, "");
+    if (digits.length) return Number(digits[digits.length - 1]);
+  }
+  const digits = text.replace(/\D/g, "");
+  return digits.length ? Number(digits[digits.length - 1]) : null;
+}
+
+function send(payload) {
+  if (socket && socket.readyState === WebSocket.OPEN) {
+    socket.send(JSON.stringify(payload));
+  }
+}
+
+function clearScanner() {
+  tickDigits = [];
+  tickRows = [];
+  received = 0;
+  lastQuote = null;
+  tickSubscriptionId = null;
+  historyRequestId = null;
+  $("quote").textContent = "—";
+  $("digit").textContent = "—";
+  $("received").textContent = "0";
+  $("signal").textContent = "WAITING";
+  $("signalInfo").textContent = "Collecting tick data.";
+  $("barrierInfo").textContent = "Awaiting enough ticks";
+  $("history").innerHTML = '<div class="small">Waiting for tick data…</div>';
+  renderFrequencies();
+}
+
+function connect() {
+  if (!running) return;
+  const myGeneration = generation;
+
+  try {
+    setStatus("Connecting to Deriv…");
+    $("connectionNote").textContent = "Opening public market-data connection.";
+    socket = new WebSocket(WS_URL);
+  } catch (err) {
+    setStatus("Connection could not start");
+    scheduleReconnect(myGeneration);
+    return;
+  }
+
+  socket.onopen = () => {
+    if (myGeneration !== generation || !running) return;
+    reconnectAttempts = 0;
+    setStatus("Connected · requesting tick history", true);
+    $("connectionNote").textContent = "Connected. Requesting recent history and live ticks.";
+    const count = Number($("mode").value);
+    historyRequestId = requestId++;
+    send({
+      ticks_history: activeSymbol,
+      count,
+      end: "latest",
+      style: "ticks",
+      req_id: historyRequestId
+    });
+    send({ ticks: activeSymbol, subscribe: 1, req_id: requestId++ });
+  };
+
+  socket.onmessage = event => {
+    if (myGeneration !== generation || !running) return;
+    let data;
+    try { data = JSON.parse(event.data); } catch { return; }
+
+    if (data.error) {
+      setStatus("Deriv error: " + data.error.message);
+      $("connectionNote").textContent =
+        "Check the App ID, connection, and whether this symbol is available.";
+      if (data.echo_req && data.echo_req.ticks_history) {
+        $("history").innerHTML =
+          '<div class="small">History request failed: ' +
+          escapeHTML(data.error.message) + '</div>';
+      }
+      return;
+    }
+
+    if (data.msg_type === "history" && data.history) {
+      const prices = data.history.prices || [];
+      const times = data.history.times || [];
+      prices.forEach((price, i) => {
+        addTick(price, times[i], false);
+      });
+      updateDashboard();
+      setStatus("Live connection active", true);
+      $("connectionNote").textContent =
+        "History loaded. Waiting for new live ticks.";
+    }
+
+    if (data.msg_type === "tick" && data.tick) {
+      tickSubscriptionId = data.subscription?.id || tickSubscriptionId;
+      addTick(data.tick.quote, data.tick.epoch, true);
+      updateDashboard();
+      setStatus("Live tick stream active", true);
+      $("connectionNote").textContent =
+        "Receiving live quotes from Deriv. No trades are being placed.";
+    }
+  };
+
+  socket.onerror = () => {
+    if (myGeneration === generation && running) {
+      setStatus("Connection error");
+      $("connectionNote").textContent =
+        "Check your internet connection and confirm the App ID is valid.";
+    }
+  };
+
+  socket.onclose = () => {
+    if (myGeneration !== generation || !running) return;
+    setStatus("Connection closed");
+    scheduleReconnect(myGeneration);
+  };
+}
+
+function scheduleReconnect(myGeneration) {
+  if (!running || myGeneration !== generation || reconnectTimer) return;
+  reconnectAttempts++;
+  const delay = Math.min(15000, 1000 * reconnectAttempts);
+  setStatus("Reconnecting in " + Math.round(delay / 1000) + "s…");
+  reconnectTimer = setTimeout(() => {
+    reconnectTimer = null;
+    if (running && myGeneration === generation) connect();
+  }, delay);
+}
+
+function addTick(quote, epoch, isLive) {
+  const digit = getLastDigit(quote);
+  if (digit === null) return;
+
+  const row = {
+    quote: String(quote),
+    digit,
+    time: epoch ? new Date(Number(epoch) * 1000) : new Date()
+  };
+
+  lastQuote = row.quote;
+  tickDigits.push(digit);
+  tickRows.unshift(row);
+  if (tickDigits.length > 1000) tickDigits.shift();
+  if (tickRows.length > 30) tickRows.pop();
+  if (isLive) received++;
+}
+
+function updateDashboard() {
+  $("quote").textContent = lastQuote ?? "—";
+  const digit = tickDigits.length ? tickDigits[tickDigits.length - 1] : null;
+  $("digit").textContent = digit === null ? "—" : digit;
+  $("received").textContent = String(received);
+  renderFrequencies();
+  renderHistory();
+  renderSignal();
+}
+
+function renderFrequencies() {
+  const counts = Array(10).fill(0);
+  tickDigits.forEach(d => counts[d]++);
+  const total = tickDigits.length;
+  $("frequencies").innerHTML = counts.map((count, digit) => {
+    const pct = total ? (count / total * 100).toFixed(1) : "0.0";
+    return '<div class="stat"><small>Digit ' + digit +
+      '</small><strong>' + pct + '%</strong><div class="small">' +
+      count + ' / ' + total + ' ticks</div></div>';
+  }).join("");
+  $("frequencyNote").textContent = total
+    ? "Based on " + total + " retained ticks. Historical frequency does not predict the next tick with certainty."
+    : "Frequency will appear after tick data arrives.";
+}
+
+function renderHistory() {
+  if (!tickRows.length) {
+    $("history").innerHTML = '<div class="small">No ticks loaded yet.</div>';
+    return;
+  }
+  $("history").innerHTML = tickRows.map(row =>
+    '<div class="tick"><span>' + escapeHTML(row.time.toLocaleTimeString()) +
+    '</span><span>' + escapeHTML(row.quote) +
+    '</span><span>Digit ' + row.digit + '</span></div>'
+  ).join("");
+}
+
+function renderSignal() {
+  const count = Number($("mode").value);
+  const sample = tickDigits.slice(-count);
+  if (sample.length < Math.min(30, count)) {
+    $("signal").textContent = "COLLECTING";
+    $("signalInfo").textContent =
+      "Need more ticks before showing a frequency comparison.";
+    $("barrierInfo").textContent = sample.length + " / " +
+      Math.min(30, count) + " minimum sample ticks";
+    return;
+  }
+
+  const barrier = 5;
+  const over = sample.filter(d => d > barrier).length;
+  const under = sample.filter(d => d < barrier).length;
+  const equal = sample.filter(d => d === barrier).length;
+  const total = sample.length;
+  const overPct = over / total * 100;
+  const underPct = under / total * 100;
+
+  let direction = "WAIT";
+  if (overPct >= 60) direction = "OVER";
+  else if (underPct >= 60) direction = "UNDER";
+
+  $("signal").textContent = direction;
+  $("signal").style.color = direction === "OVER" ? "var(--green)" :
+    direction === "UNDER" ? "var(--red)" : "var(--gold)";
+  $("signalInfo").textContent =
+    "Digit barrier 5 · " + total + " ticks analysed. " +
+    "Over 5: " + overPct.toFixed(1) + "% · Under 5: " +
+    underPct.toFixed(1) + "% · Equal 5: " + equal + ".";
+  $("barrierInfo").textContent =
+    "OVER = last digit greater than 5 · UNDER = last digit less than 5. " +
+    "Digit 5 is excluded from both.";
+}
+
+function escapeHTML(value) {
+  return String(value).replace(/[&<>"']/g, c => ({
+    "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;"
+  })[c]);
+}
+
+function stopScanner() {
+  running = false;
+  generation++;
+  if (reconnectTimer) clearTimeout(reconnectTimer);
+  reconnectTimer = null;
+
+  if (socket) {
+    try {
+      if (tickSubscriptionId) {
+        socket.send(JSON.stringify({
+          forget: tickSubscriptionId,
+          req_id: requestId++
+        }));
+      }
+      socket.close();
+    } catch {}
+  }
+
+  socket = null;
+  tickSubscriptionId = null;
+  setStatus("Scanner stopped");
+  $("connectionNote").textContent = "Scanner is stopped.";
+}
+
+function startScanner() {
+  stopScanner();
+  running = true;
+  generation++;
+  activeSymbol = $("market").value;
+  clearScanner();
+  $("signalInfo").textContent = "Connecting and loading tick history.";
+  connect();
+}
+
+$("start").addEventListener("click", startScanner);
+$("stop").addEventListener("click", stopScanner);
+
+$("market").addEventListener("change", () => {
+  if (running) startScanner();
+});
+
+$("mode").addEventListener("change", () => {
+  if (running) startScanner();
+});
+
+renderFrequencies();
+</script>
+</body>
+  </html>
+    
